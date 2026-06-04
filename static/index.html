@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dococo - Palantir Style OCR Interface</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-layout">
+        <header class="app-header">
+            <div class="brand-section">
+                <div class="logo-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                </div>
+                <div>
+                    <h1>DOCOCO <span>// AN EXTRACTION SUITE</span></h1>
+                    <p class="subtitle">RUNS LOCALLY</p>
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <input type="file" id="imageInput" accept="image/*" style="width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1;">
+                <label for="imageInput" class="btn btn-outline">
+                    SELECT FILE
+                </label>
+                <div id="fileName" class="file-name" title="No file chosen">NONE</div>
+                <button id="processBtn" class="btn btn-primary" disabled>RUN ANALYSIS</button>
+            </div>
+        </header>
+
+        <main id="resultsSection" class="workspace hidden">
+            <!-- Left Pane: Image Viewer -->
+            <section class="pane viewer-pane">
+                <div class="pane-header">
+                    <span class="pane-title">DOCUMENT SOURCE</span>
+                    <span id="uidDisplay" class="badge"></span>
+                </div>
+                <div class="pane-content viewer-content">
+                    <div class="image-wrapper" id="imageWrapper">
+                        <img id="previewImage" src="" alt="Document Preview">
+                        <!-- BBox overlays will be injected here -->
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Right Pane: Tabbed Data View -->
+            <section class="pane data-pane">
+                <div class="pane-header tabs-header">
+                    <button class="tab-btn active" data-target="htmlView">HTML BLOCKS</button>
+                    <button class="tab-btn" data-target="jsonView">RAW JSON</button>
+                </div>
+                
+                <div class="pane-content data-content">
+                    
+                    <!-- Loader (Claude Code style) -->
+                    <div id="loader" class="loader-pane hidden">
+                        <div class="loader-box">
+                            <div class="svg-loader">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                </svg>
+                            </div>
+                            <div id="loaderText" class="loader-text">Initializing Surya Models...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- HTML Tab -->
+                    <div id="htmlView" class="tab-content active">
+                        <div class="toolbar">
+                            <button id="copyMdBtn" class="btn btn-sm btn-outline">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                COPY MARKDOWN
+                            </button>
+                            <span id="copyConfirm" class="copy-confirm hidden">COPIED!</span>
+                        </div>
+                        <div id="chunksContainer" class="chunks-container">
+                            <!-- Text chunks will be injected here -->
+                        </div>
+                    </div>
+
+                    <!-- JSON Tab -->
+                    <div id="jsonView" class="tab-content">
+                        <div class="toolbar">
+                            <button id="copyJsonBtn" class="btn btn-sm btn-outline">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                COPY JSON
+                            </button>
+                            <span id="copyJsonConfirm" class="copy-confirm hidden">COPIED!</span>
+                        </div>
+                        <div class="code-wrapper">
+                            <pre><code id="jsonOutput"></code></pre>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Include Marked.js for Markdown Rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
