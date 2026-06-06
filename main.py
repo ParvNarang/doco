@@ -1,17 +1,21 @@
-import io
 import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+import io
 import uuid
 import json
 import re
 import datetime
+import gc
+import warnings
 import pypdfium2 as pdfium
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, UploadFile, Request
-from fastapi.responses import HTMLResponse, Response, JSONResponse
+from fastapi.responses import HTMLResponse, Response, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from PIL import Image, ImageEnhance
-
+from pydantic import BaseModel
+import rag
 # surya imports
 # pyrefly: ignore [missing-import]
 from surya.inference import SuryaInferenceManager
@@ -19,6 +23,9 @@ from surya.inference import SuryaInferenceManager
 from surya.layout import LayoutPredictor
 # pyrefly: ignore [missing-import]
 from surya.recognition import RecognitionPredictor
+
+# Suppress loky multiprocessing leaked semaphore warnings
+warnings.filterwarnings("ignore", module="multiprocessing.resource_tracker")
 
 # Global objects to hold the loaded models
 models = {}
@@ -39,14 +46,24 @@ def strip_html_tags(text):
     clean = re.compile('<.*?>')
     return re.sub(clean, '', text)
 
+def load_surya_models():
+    if "manager" not in models:
+        print("Loading Surya models...")
+        models["manager"] = SuryaInferenceManager()
+        models["layout_predictor"] = LayoutPredictor(models["manager"])
+        models["recognition_predictor"] = RecognitionPredictor(models["manager"])
+        print("Models loaded successfully.")
+
+def unload_surya_models():
+    if "manager" in models:
+        print("Unloading Surya models to free memory for LLM...")
+        models.clear()
+        gc.collect()
+        os.system("pkill -f llama-server")
+        print("Surya models unloaded.")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Loading Surya models...")
-    models["manager"] = SuryaInferenceManager()
-    models["layout_predictor"] = LayoutPredictor(models["manager"])
-    models["recognition_predictor"] = RecognitionPredictor(models["manager"])
-    print("Models loaded successfully.")
-    
     # Ensure data directory exists for both JSONs and Images
     os.makedirs("data", exist_ok=True)
     
@@ -85,6 +102,8 @@ async def get_pdf_preview(file: UploadFile = File(...)):
 
 @app.post("/api/process")
 async def process_document(file: UploadFile = File(...)):
+    load_surya_models()
+    
     contents = await file.read()
     file_uid = str(uuid.uuid4())
     
@@ -139,6 +158,7 @@ async def process_document(file: UploadFile = File(...)):
     pages_data = []
     
     for page_idx, page_results in enumerate(serializable_preds):
+        page_markdown_lines = []
         if not page_results:
             page_results = {}
             
@@ -162,17 +182,23 @@ async def process_document(file: UploadFile = File(...)):
             
             if label in ["Title", "PageHeader"]:
                 markdown_lines.append(f"{anchor}\n# {clean_text}\n")
+                page_markdown_lines.append(f"{anchor}\n# {clean_text}\n")
             elif label == "SectionHeader":
                 markdown_lines.append(f"{anchor}\n## {clean_text}\n")
+                page_markdown_lines.append(f"{anchor}\n## {clean_text}\n")
             elif label == "List":
                 markdown_lines.append(f"{anchor}\n- {clean_text}")
+                page_markdown_lines.append(f"{anchor}\n- {clean_text}")
             else:
                 markdown_lines.append(f"{anchor}\n{clean_text}\n")
+                page_markdown_lines.append(f"{anchor}\n{clean_text}\n")
         
         markdown_lines.append("\n---\n") # Page divider in markdown
         
+        page_markdown_str = "\n".join(page_markdown_lines)
+        
         # Combine metadata and results for this page
-        page_data = {**page_metadata[page_idx], "results": page_results}
+        page_data = {**page_metadata[page_idx], "results": page_results, "markdown": page_markdown_str}
         pages_data.append(page_data)
             
     markdown_str = "\n".join(markdown_lines)
@@ -235,6 +261,46 @@ async def get_document(uid: str):
             "pages": pages_data
         })
     except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+class ChatRequest(BaseModel):
+    uid: str
+    message: str
+    model: str
+    method: str
+
+@app.post("/api/chat")
+async def handle_chat(request: ChatRequest):
+    unload_surya_models()
+    
+    uid = request.uid
+    message = request.message
+    
+    try:
+        # Retrieve results
+        results = rag.retrieve(uid, message, top_k=5)
+        
+        from fastapi.responses import StreamingResponse
+        
+        async def response_generator():
+            # Send initial results payload
+            yield f"data: {json.dumps({'type': 'results', 'results': results})}\n\n"
+            
+            try:
+                # Stream the tokens
+                for token in rag.generate_answer(message, results, model_name=request.model):
+                    if token:
+                        # Yield the exact token chunk
+                        yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+                
+            yield "data: [DONE]\n\n"
+            
+        return StreamingResponse(response_generator(), media_type="text/event-stream")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":

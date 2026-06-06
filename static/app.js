@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageWrapper = document.getElementById('imageWrapper');
     const uidDisplay = document.getElementById('uidDisplay');
     
+    let currentUid = null;
+    
     const loader = document.getElementById('loader');
     const loaderText = document.getElementById('loaderText');
     
@@ -61,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Clean up old UI
             document.querySelectorAll('.bbox-overlay').forEach(el => el.remove());
+            currentUid = null;
             uidDisplay.textContent = "";
             chunksContainer.innerHTML = "";
             jsonOutput.innerHTML = "";
@@ -142,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Display UID & Type
             const fileExt = currentFile.name.split('.').pop().toUpperCase();
+            currentUid = data.uid;
             uidDisplay.textContent = `TYPE: ${fileExt} | DOC: ${data.uid}`;
 
             // Populate Tabs
@@ -286,8 +290,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadHistoryDocument(item) {
         historyDrawer.classList.add('hidden');
+        fileNameDisplay.textContent = item.filename || "History Document";
+        currentUid = item.uid;
         uidDisplay.textContent = item.uid;
-        fileNameDisplay.textContent = item.filename;
         
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
         resultsSection.classList.remove('hidden');
@@ -583,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
-    function handleSend() {
+    async function handleSend() {
         if (!chatTextarea) return;
         const text = chatTextarea.value.trim();
         if (!text) return;
@@ -615,9 +620,110 @@ document.addEventListener('DOMContentLoaded', () => {
         appendMessage('user', text);
         chatTextarea.value = '';
         
-        setTimeout(() => {
-            appendMessage('bot', "I'm a frontend simulation. You said: " + text);
-        }, 600);
+        if (!currentUid) {
+            appendMessage('bot', "Please process a document first.");
+            return;
+        }
+        
+        // Find dropdown values
+        const selects = document.querySelectorAll('.chat-select');
+        let model = "GPT-4o";
+        let method = "QA";
+        if (selects.length >= 2) {
+            model = selects[0].value.replace("Model: ", "");
+            method = selects[1].value.replace("Method: ", "");
+        }
+        
+        // Show loading
+        const loadingId = 'loading-' + Date.now();
+        chatHistory.insertAdjacentHTML('beforeend', `
+            <div id="${loadingId}" class="chat-message bot-message" style="opacity: 0.7;">
+                <div class="chat-avatar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                </div>
+                <div class="chat-bubble" style="background: transparent; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 8px;">
+                    <span id="${loadingId}-text" style="color: var(--text-muted); font-size: 0.9em;">Searching document</span>
+                    <div class="typing-indicator" style="display: flex;">
+                        <span style="display: inline-block; width: 4px; height: 4px; background-color: var(--text-muted); border-radius: 50%; margin: 0 2px; animation: blink 1.4s infinite both; animation-delay: 0s;"></span>
+                        <span style="display: inline-block; width: 4px; height: 4px; background-color: var(--text-muted); border-radius: 50%; margin: 0 2px; animation: blink 1.4s infinite both; animation-delay: 0.2s;"></span>
+                        <span style="display: inline-block; width: 4px; height: 4px; background-color: var(--text-muted); border-radius: 50%; margin: 0 2px; animation: blink 1.4s infinite both; animation-delay: 0.4s;"></span>
+                    </div>
+                </div>
+            </div>
+        `);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: currentUid,
+                    message: text,
+                    model: model,
+                    method: method
+                })
+            });
+            
+            // Do not remove loading indicator yet, wait for first token
+            
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            
+            let isFirstToken = true;
+            let currentMessageDiv = null;
+            let pElement = null;
+            let currentMarkdown = "";
+            let retrievedContext = "";
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunkStr = decoder.decode(value, { stream: true });
+                const lines = chunkStr.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const dataStr = line.substring(6);
+                        if (dataStr === '[DONE]') continue;
+                        
+                        try {
+                            const data = JSON.parse(dataStr);
+                            
+                            if (data.type === 'results') {
+                                const loadText = document.getElementById(`${loadingId}-text`);
+                                if (loadText) loadText.innerText = "Thinking";
+                            } else if (data.type === 'token') {
+                                if (isFirstToken) {
+                                    document.getElementById(loadingId)?.remove();
+                                    appendMessage('bot', '');
+                                    currentMessageDiv = chatHistory.lastElementChild;
+                                    pElement = currentMessageDiv.querySelector('p');
+                                    isFirstToken = false;
+                                }
+                                currentMarkdown += data.content;
+                                pElement.innerHTML = currentMarkdown.replace(/\\n/g, '<br>');
+                                chatHistory.scrollTop = chatHistory.scrollHeight;
+                            } else if (data.type === 'error') {
+                                appendMessage('bot', "Error: " + data.error);
+                            }
+                        } catch(e) {
+                            // Ignore incomplete JSON chunks from split boundaries
+                        }
+                    }
+                }
+            }
+            
+            if (pElement && currentMarkdown) {
+                pElement.innerHTML = currentMarkdown.replace(/\\n/g, '<br>');
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+            
+        } catch (e) {
+            document.getElementById(loadingId)?.remove();
+            appendMessage('bot', "Network error: " + e.message);
+        }
     }
 
     if (chatSendBtn) {
