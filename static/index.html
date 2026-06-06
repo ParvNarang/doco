@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dococo - Palantir Style OCR Interface</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-layout">
+        <header class="app-header">
+            <div class="brand-section">
+                <div class="logo-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                </div>
+                <div>
+                    <!-- <h1>DOCOCO <span>// AN EXTRACTION SUITE</span></h1> -->
+                     <h1>DoCoCo <span>// AN INTELLIGENT DOCUMENT EXTRACTION</span></h1>
+                    <p class="subtitle">RUNS LOCALLY</p>
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <input type="file" id="imageInput" accept="image/*, application/pdf" style="width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1;">
+                <label for="imageInput" class="btn btn-outline">
+                    SELECT FILE
+                </label>
+                <button id="processBtn" class="btn btn-primary" disabled>RUN ANALYSIS</button>
+                <button id="historyBtn" class="btn btn-outline" style="margin-right: 12px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 1px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <!-- RECENTS -->
+                </button>
+            </div>
+        </header>
+
+        <!-- History Drawer -->
+        <div id="historyDrawer" class="history-drawer hidden">
+            <div class="drawer-header">
+                <h3>Recent Files</h3>
+                <button id="closeHistoryBtn" class="btn-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div id="historyList" class="history-list">
+                <!-- History items injected here -->
+            </div>
+        </div>
+
+        <div id="welcomeScreen" class="welcome-screen">
+            <div class="welcome-box">
+                <div class="welcome-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                </div>
+                <h2>Upload a Document</h2>
+                <p>Select your file</p>
+                <button class="btn btn-primary" onclick="document.getElementById('imageInput').click()" style="margin-top: 16px; padding: 10px 24px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    SELECT FILE
+                </button>
+            </div>
+        </div>
+
+        <main id="resultsSection" class="workspace hidden">
+            <!-- Leftmost Pane: Thumbnails -->
+            <section class="thumbnail-sidebar" id="thumbnailSidebar">
+                <!-- Thumbnails injected here -->
+            </section>
+            
+            <!-- Center Pane: Image Viewer -->
+            <section class="pane viewer-pane">
+                <div class="pane-header" style="justify-content: space-between;">
+                    <div>
+                        <span class="pane-title">DOCUMENT SOURCE : </span>
+                        <span id="fileName" class="badge" title="No file chosen">NONE  </span>
+                        <span id="uidDisplay" class="badge">   </span>
+                    </div>
+                </div>
+                <div class="pane-content viewer-content" id="viewerContent">
+                    <!-- Images and BBox overlays will be injected here dynamically -->
+                </div>
+            </section>
+            
+            <!-- Right Pane: Tabbed Data View -->
+            <section class="pane data-pane">
+                <div class="pane-header tabs-header">
+                    <button class="tab-btn active" data-target="htmlView">HTML BLOCKS</button>
+                    <button class="tab-btn" data-target="jsonView">RAW JSON</button>
+                    <button class="tab-btn" data-target="chatView">CHAT</button>
+                </div>
+                
+                <div class="pane-content data-content">
+                    
+                    <!-- Loader (Claude Code style) -->
+                    <div id="loader" class="loader-pane hidden">
+                        <div class="loader-box">
+                            <div class="svg-loader">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                </svg>
+                            </div>
+                            <div id="loaderText" class="loader-text">Initializing Surya Models...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- HTML Tab -->
+                    <div id="htmlView" class="tab-content active">
+                        <div class="toolbar">
+                            <div style="display: flex; gap: 8px;">
+                                <button id="downloadMdBtn" class="btn btn-sm btn-outline">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    DOWNLOAD
+                                </button>
+                                <button id="copyMdBtn" class="btn btn-sm btn-outline">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    COPY
+                                </button>
+                            </div>
+                            <span id="copyConfirm" class="copy-confirm hidden">COPIED!</span>
+                        </div>
+                        <div id="chunksContainer" class="chunks-container">
+                            <!-- Text chunks will be injected here -->
+                        </div>
+                    </div>
+
+                    <!-- JSON Tab -->
+                    <div id="jsonView" class="tab-content">
+                        <div class="toolbar">
+                            <div style="display: flex; gap: 8px;">
+                                <button id="downloadJsonBtn" class="btn btn-sm btn-outline">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    DOWNLOAD
+                                </button>
+                                <button id="copyJsonBtn" class="btn btn-sm btn-outline">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    COPY
+                                </button>
+                            </div>
+                            <span id="copyJsonConfirm" class="copy-confirm hidden">COPIED!</span>
+                        </div>
+                        <div class="code-wrapper">
+                            <pre><code id="jsonOutput"></code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Chat Tab -->
+                    <div id="chatView" class="tab-content">
+                        <div class="chat-container">
+                            <div class="chat-history">
+                                <div id="chatEmptyState" class="chat-empty-state">
+                                    <svg opacity="0.5" viewBox="0 0 24 24" fill="url(#glassGradient)" stroke="rgba(255,255,255,0.5)" stroke-width="0.2" stroke-linecap="round" stroke-linejoin="round">
+                                      <defs>
+                                        <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                          <stop offset="0%" stop-color="rgba(255,255,255,0.25)" />
+                                          <stop offset="100%" stop-color="rgba(255,255,255,0.05)" />
+                                        </linearGradient>
+                                      </defs>
+                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                      <polyline points="14 2 14 8 20 8"></polyline>
+                                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                                      <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="chat-input-area">
+                                <div class="chat-input-wrapper">
+                                    <textarea placeholder="Ask anything, /clear to clear chat" class="chat-textarea" rows="1"></textarea>
+                                    <div class="chat-input-bottom">
+                                        <div class="chat-selects">
+                                        <select class="chat-select">
+                                                <option>Model: Gemini 1.5</option>
+                                                <option>Model: Claude 3.5</option>
+                                                <option>Model: GPT-4o</option>
+                                            </select>
+                                            <select class="chat-select">
+                                                <option>Method: QA</option>
+                                                <option>Method: Extract</option>
+                                                <option>Method: Summarize</option>
+                                            </select>
+
+                                        </div>
+                                        <button class="chat-send-btn">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Include Marked.js for Markdown Rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/static/app.js?v=2"></script>
+</body>
+</html>
