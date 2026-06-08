@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from PIL import Image, ImageEnhance
 from pydantic import BaseModel
 import rag
+import extraction
 # surya imports
 # pyrefly: ignore [missing-import]
 from surya.inference import SuryaInferenceManager
@@ -297,6 +298,85 @@ async def handle_chat(request: ChatRequest):
                 
             yield "data: [DONE]\n\n"
             
+        return StreamingResponse(response_generator(), media_type="text/event-stream")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+def get_document_markdown_string(uid: str) -> str:
+    doc_dir = os.path.join("data", uid)
+    data_path = os.path.join(doc_dir, "data.json")
+    if not os.path.exists(data_path):
+        raise FileNotFoundError("Document data not found")
+        
+    with open(data_path, "r", encoding="utf-8") as f:
+        pages_data = json.load(f)
+        
+    markdown_parts = []
+    for page in pages_data:
+        page_markdown = page.get("markdown", "")
+        # Fallback for older processed documents that didn't save page-level markdown
+        if not page_markdown:
+            blocks = page.get("results", {}).get("text_lines") or page.get("results", {}).get("blocks", [])
+            lines = []
+            for block in blocks:
+                uuid_str = block.get("uuid", "")
+                text = block.get("text", block.get("text_content", ""))
+                if not text:
+                    text = strip_html_tags(block.get("html", ""))
+                if text.strip():
+                    lines.append(f"<a id='{uuid_str}'></a>\n{text.strip()}")
+            page_markdown = "\n\n".join(lines)
+        if page_markdown.strip():
+            markdown_parts.append(page_markdown)
+            
+    return "\n\n---\n\n".join(markdown_parts)
+
+class SuggestSchemaRequest(BaseModel):
+    uid: str
+    model: str
+
+class ExtractRequest(BaseModel):
+    uid: str
+    schema_dict: dict
+    model: str
+    threshold: int = 20000
+
+@app.post("/api/suggest-schema")
+async def handle_suggest_schema(request: SuggestSchemaRequest):
+    unload_surya_models()
+    
+    try:
+        markdown_str = get_document_markdown_string(request.uid)
+        suggested = extraction.suggest_schema(markdown_str, model_name=request.model)
+        return JSONResponse(content=suggested)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/extract")
+async def handle_extract(request: ExtractRequest):
+    unload_surya_models()
+    
+    try:
+        markdown_str = get_document_markdown_string(request.uid)
+        
+        async def response_generator():
+            try:
+                for chunk in extraction.run_agentic_extraction(
+                    document_text=markdown_str,
+                    schema=request.schema_dict,
+                    model_name=request.model,
+                    threshold=request.threshold
+                ):
+                    yield chunk
+            except Exception as e:
+                yield json.dumps({"type": "log", "message": f"Server Error during extraction: {str(e)}"}) + "\n\n"
+                yield json.dumps({"type": "result", "data": {"error": f"Extraction aborted: {str(e)}"}}) + "\n\n"
+                yield "[DONE]\n\n"
+                
         return StreamingResponse(response_generator(), media_type="text/event-stream")
     except Exception as e:
         import traceback
