@@ -10,9 +10,9 @@ By combining layout-aware VLM OCR pipelines with self-correcting agentic JSON ex
 
 Here is the Doco workspace in action:
 
-![Document Ingestion & OCR Visualization](assets/11.png)
+![Document Ingestion & OCR Visualization](screenshots/11.png)
 
-![Agentic JSON Extraction & Schema Builder](assets/22.png)
+![Agentic JSON Extraction & Schema Builder](screenshots/22.png)
 
 ---
 
