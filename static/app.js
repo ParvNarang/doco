@@ -815,14 +815,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (len < threshold) {
             routingBadge.textContent = "Route: Direct";
-            routingBadge.style.borderColor = "#2dd4bf";
-            routingBadge.style.color = "#2dd4bf";
-            routingBadge.style.background = "rgba(45, 212, 191, 0.05)";
+            routingBadge.style.borderColor = "var(--accent-green)";
+            routingBadge.style.color = "var(--accent-green)";
+            routingBadge.style.background = "var(--accent-green-dim)";
         } else {
             routingBadge.textContent = "Route: Chunked";
-            routingBadge.style.borderColor = "#fbbf24";
-            routingBadge.style.color = "#fbbf24";
-            routingBadge.style.background = "rgba(251, 191, 36, 0.05)";
+            routingBadge.style.borderColor = "#d97706";
+            routingBadge.style.color = "#d97706";
+            routingBadge.style.background = "rgba(217, 119, 6, 0.05)";
         }
     }
 
@@ -853,6 +853,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
+            const schemaLoader = document.getElementById('schemaLoader');
+            if (schemaLoader) schemaLoader.classList.remove('hidden');
             suggestSchemaBtn.disabled = true;
             appendConsoleLog("Contacting model to analyze content and suggest schema...", "info");
             
@@ -879,6 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 appendConsoleLog(`Failed to suggest schema: ${e.message}`, "warning");
             } finally {
+                if (schemaLoader) schemaLoader.classList.add('hidden');
                 suggestSchemaBtn.disabled = false;
             }
         });
@@ -929,6 +932,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // UI state: running
+            const extractLoader = document.getElementById('extractLoader');
+            if (extractLoader) extractLoader.classList.remove('hidden');
             runExtractBtn.disabled = true;
             if (suggestSchemaBtn) suggestSchemaBtn.disabled = true;
             if (uploadSchemaBtn) uploadSchemaBtn.disabled = true;
@@ -1001,6 +1006,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 appendConsoleLog(`Fatal error during extraction stream: ${err.message}`, "warning");
             } finally {
+                const extractLoader = document.getElementById('extractLoader');
+                if (extractLoader) extractLoader.classList.add('hidden');
                 runExtractBtn.disabled = false;
                 if (suggestSchemaBtn) suggestSchemaBtn.disabled = false;
                 if (uploadSchemaBtn) uploadSchemaBtn.disabled = false;
