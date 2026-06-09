@@ -87,6 +87,7 @@
                     <button class="tab-btn active" data-target="htmlView">MARKDOWN</button>
                     <button class="tab-btn" data-target="jsonView">RAW JSON</button>
                     <button class="tab-btn" data-target="chatView">CHAT</button>
+                    <button class="tab-btn" data-target="extractView">EXTRACTION</button>
                 </div>
                 
                 <div class="pane-content data-content">
@@ -168,10 +169,10 @@
                                     <textarea placeholder="Ask anything, /clear to clear chat" class="chat-textarea" rows="1"></textarea>
                                     <div class="chat-input-bottom">
                                         <div class="chat-selects">
-                                        <select class="chat-select">
-                                                <option>Model: Gemini 1.5</option>
-                                                <option>Model: Claude 3.5</option>
-                                                <option>Model: GPT-4o</option>
+                                            <select class="chat-select">
+                                                <option>Model: qwen2.5vl:7b</option>
+                                                <option>Model: llama3</option>
+                                                <option>Model: mistral</option>
                                             </select>
                                             <select class="chat-select">
                                                 <option>Method: QA</option>
@@ -188,7 +189,68 @@
                             </div>
                         </div>
                     </div>
-
+                    
+                    <!-- Extraction Tab -->
+                    <div id="extractView" class="tab-content">
+                        <div class="extraction-workspace">
+                            <!-- Left / Top Panel: Schema Definition -->
+                            <div class="extraction-panel schema-panel">
+                                <div class="extraction-panel-header">
+                                    <span class="panel-title-label">SCHEMA DEFINITION</span>
+                                    <div class="routing-badge-container">
+                                        <span id="docLengthBadge" class="badge">Length: 0 Chars</span>
+                                        <span id="routingBadge" class="badge">Route: N/A</span>
+                                    </div>
+                                </div>
+                                <div class="schema-editor-wrapper">
+                                    <textarea id="schemaTextarea" placeholder="Enter target JSON schema here..." class="schema-textarea"></textarea>
+                                </div>
+                                <div class="extraction-actions">
+                                    <button id="suggestSchemaBtn" class="btn btn-outline">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                                        SUGGEST
+                                    </button>
+                                    <button id="uploadSchemaBtn" class="btn btn-outline">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                        UPLOAD (.JSON)
+                                    </button>
+                                    <input type="file" id="schemaFileInput" accept=".json,application/json" style="display: none;">
+                                    
+                                    <button id="runExtractBtn" class="btn btn-primary" style="margin-left: auto;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                        EXTRACT
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Right / Bottom Panel: Extraction Console & Output -->
+                            <div class="extraction-panel output-panel">
+                                <div class="extraction-panel-header">
+                                    <span class="panel-title-label">AGENT CONSOLE LOGS</span>
+                                </div>
+                                <div id="extractConsole" class="extract-console">
+                                    <div class="console-line system-line">> Console initialized. Ready for extraction.</div>
+                                </div>
+                                
+                                <div class="extraction-panel-header" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                                    <span class="panel-title-label">EXTRACTED JSON DATA</span>
+                                    <div class="output-actions" style="margin-left: auto; display: flex; gap: 8px;">
+                                        <button id="downloadExtractBtn" class="btn btn-sm btn-outline" disabled>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                            DOWNLOAD
+                                        </button>
+                                        <button id="copyExtractBtn" class="btn btn-sm btn-outline" disabled>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            COPY
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="extracted-json-wrapper">
+                                    <pre><code id="extractedJsonOutput">{}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>

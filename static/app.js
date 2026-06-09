@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageWrapper = document.getElementById('imageWrapper');
     const uidDisplay = document.getElementById('uidDisplay');
     
+    let currentUid = null;
+    
     const loader = document.getElementById('loader');
     const loaderText = document.getElementById('loaderText');
     
@@ -61,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Clean up old UI
             document.querySelectorAll('.bbox-overlay').forEach(el => el.remove());
+            currentUid = null;
             uidDisplay.textContent = "";
             chunksContainer.innerHTML = "";
             jsonOutput.innerHTML = "";
@@ -142,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Display UID & Type
             const fileExt = currentFile.name.split('.').pop().toUpperCase();
+            currentUid = data.uid;
             uidDisplay.textContent = `TYPE: ${fileExt} | DOC: ${data.uid}`;
 
             // Populate Tabs
@@ -286,8 +290,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadHistoryDocument(item) {
         historyDrawer.classList.add('hidden');
+        fileNameDisplay.textContent = item.filename || "History Document";
+        currentUid = item.uid;
         uidDisplay.textContent = item.uid;
-        fileNameDisplay.textContent = item.filename;
         
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
         resultsSection.classList.remove('hidden');
@@ -309,6 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             currentPages = data.pages;
             renderAllPages();
+            currentMarkdown = currentPages.map(p => p.markdown || "").join("\n\n---\n\n");
             
             loader.classList.add('hidden');
         } catch (e) {
@@ -583,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
-    function handleSend() {
+    async function handleSend() {
         if (!chatTextarea) return;
         const text = chatTextarea.value.trim();
         if (!text) return;
@@ -615,9 +621,110 @@ document.addEventListener('DOMContentLoaded', () => {
         appendMessage('user', text);
         chatTextarea.value = '';
         
-        setTimeout(() => {
-            appendMessage('bot', "I'm a frontend simulation. You said: " + text);
-        }, 600);
+        if (!currentUid) {
+            appendMessage('bot', "Please process a document first.");
+            return;
+        }
+        
+        // Find dropdown values
+        const selects = document.querySelectorAll('.chat-select');
+        let model = "GPT-4o";
+        let method = "QA";
+        if (selects.length >= 2) {
+            model = selects[0].value.replace("Model: ", "");
+            method = selects[1].value.replace("Method: ", "");
+        }
+        
+        // Show loading
+        const loadingId = 'loading-' + Date.now();
+        chatHistory.insertAdjacentHTML('beforeend', `
+            <div id="${loadingId}" class="chat-message bot-message" style="opacity: 0.7;">
+                <div class="chat-avatar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                </div>
+                <div class="chat-bubble" style="background: transparent; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 8px;">
+                    <span id="${loadingId}-text" style="color: var(--text-muted); font-size: 0.9em;">Searching document</span>
+                    <div class="typing-indicator" style="display: flex;">
+                        <span style="display: inline-block; width: 4px; height: 4px; background-color: var(--text-muted); border-radius: 50%; margin: 0 2px; animation: blink 1.4s infinite both; animation-delay: 0s;"></span>
+                        <span style="display: inline-block; width: 4px; height: 4px; background-color: var(--text-muted); border-radius: 50%; margin: 0 2px; animation: blink 1.4s infinite both; animation-delay: 0.2s;"></span>
+                        <span style="display: inline-block; width: 4px; height: 4px; background-color: var(--text-muted); border-radius: 50%; margin: 0 2px; animation: blink 1.4s infinite both; animation-delay: 0.4s;"></span>
+                    </div>
+                </div>
+            </div>
+        `);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: currentUid,
+                    message: text,
+                    model: model,
+                    method: method
+                })
+            });
+            
+            // Do not remove loading indicator yet, wait for first token
+            
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            
+            let isFirstToken = true;
+            let currentMessageDiv = null;
+            let pElement = null;
+            let currentMarkdown = "";
+            let retrievedContext = "";
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunkStr = decoder.decode(value, { stream: true });
+                const lines = chunkStr.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const dataStr = line.substring(6);
+                        if (dataStr === '[DONE]') continue;
+                        
+                        try {
+                            const data = JSON.parse(dataStr);
+                            
+                            if (data.type === 'results') {
+                                const loadText = document.getElementById(`${loadingId}-text`);
+                                if (loadText) loadText.innerText = "Thinking";
+                            } else if (data.type === 'token') {
+                                if (isFirstToken) {
+                                    document.getElementById(loadingId)?.remove();
+                                    appendMessage('bot', '');
+                                    currentMessageDiv = chatHistory.lastElementChild;
+                                    pElement = currentMessageDiv.querySelector('p');
+                                    isFirstToken = false;
+                                }
+                                currentMarkdown += data.content;
+                                pElement.innerHTML = currentMarkdown.replace(/\\n/g, '<br>');
+                                chatHistory.scrollTop = chatHistory.scrollHeight;
+                            } else if (data.type === 'error') {
+                                appendMessage('bot', "Error: " + data.error);
+                            }
+                        } catch(e) {
+                            // Ignore incomplete JSON chunks from split boundaries
+                        }
+                    }
+                }
+            }
+            
+            if (pElement && currentMarkdown) {
+                pElement.innerHTML = currentMarkdown.replace(/\\n/g, '<br>');
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+            
+        } catch (e) {
+            document.getElementById(loadingId)?.remove();
+            appendMessage('bot', "Network error: " + e.message);
+        }
     }
 
     if (chatSendBtn) {
@@ -648,4 +755,288 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+
+    // Extraction Tab Logic
+    const suggestSchemaBtn = document.getElementById('suggestSchemaBtn');
+    const uploadSchemaBtn = document.getElementById('uploadSchemaBtn');
+    const schemaFileInput = document.getElementById('schemaFileInput');
+    const schemaTextarea = document.getElementById('schemaTextarea');
+    const runExtractBtn = document.getElementById('runExtractBtn');
+    const extractConsole = document.getElementById('extractConsole');
+    const extractedJsonOutput = document.getElementById('extractedJsonOutput');
+    const downloadExtractBtn = document.getElementById('downloadExtractBtn');
+    const copyExtractBtn = document.getElementById('copyExtractBtn');
+
+    // Default schema placeholder
+    const defaultSchema = {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ExtractedData",
+      "type": "object",
+      "properties": {
+        "document_type": {
+          "type": "string",
+          "description": "Invoice, Receipt, Resume, Form, Report, etc."
+        },
+        "key_entities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of key names, vendors, candidates, or entities mentioned"
+        },
+        "summary": {
+          "type": "string",
+          "description": "A high-level summary of the document contents"
+        }
+      },
+      "required": ["document_type", "summary"]
+    };
+
+    if (schemaTextarea) {
+        schemaTextarea.value = JSON.stringify(defaultSchema, null, 2);
+    }
+
+    const threshold = 20000;
+
+    function updateExtractionBadgeState() {
+        const docLengthBadge = document.getElementById('docLengthBadge');
+        const routingBadge = document.getElementById('routingBadge');
+        if (!docLengthBadge || !routingBadge) return;
+        
+        if (!currentMarkdown) {
+            docLengthBadge.textContent = "Length: 0 Chars";
+            routingBadge.textContent = "Route: N/A";
+            routingBadge.style.borderColor = "var(--border-color)";
+            routingBadge.style.color = "var(--text-muted)";
+            routingBadge.style.background = "var(--bg-hover)";
+            return;
+        }
+        
+        const len = currentMarkdown.length;
+        docLengthBadge.textContent = `Length: ${len.toLocaleString()} Chars`;
+        
+        if (len < threshold) {
+            routingBadge.textContent = "Route: Direct";
+            routingBadge.style.borderColor = "#2dd4bf";
+            routingBadge.style.color = "#2dd4bf";
+            routingBadge.style.background = "rgba(45, 212, 191, 0.05)";
+        } else {
+            routingBadge.textContent = "Route: Chunked";
+            routingBadge.style.borderColor = "#fbbf24";
+            routingBadge.style.color = "#fbbf24";
+            routingBadge.style.background = "rgba(251, 191, 36, 0.05)";
+        }
+    }
+
+    // Call update on tab click if targets extraction view
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.target === 'extractView') {
+                updateExtractionBadgeState();
+            }
+        });
+    });
+
+    // Helper to log to console
+    function appendConsoleLog(message, type = 'normal') {
+        if (!extractConsole) return;
+        const line = document.createElement('div');
+        line.className = `console-line ${type}-line`;
+        line.textContent = `> ${message}`;
+        extractConsole.appendChild(line);
+        extractConsole.scrollTop = extractConsole.scrollHeight;
+    }
+
+    // Suggest Schema
+    if (suggestSchemaBtn) {
+        suggestSchemaBtn.addEventListener('click', async () => {
+            if (!currentUid) {
+                alert("Please process or select a document first.");
+                return;
+            }
+            
+            suggestSchemaBtn.disabled = true;
+            appendConsoleLog("Contacting model to analyze content and suggest schema...", "info");
+            
+            const selects = document.querySelectorAll('.chat-select');
+            let model = "qwen2.5vl:7b";
+            if (selects.length >= 1) {
+                model = selects[0].value.replace("Model: ", "");
+            }
+            
+            try {
+                const res = await fetch('/api/suggest-schema', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUid, model: model })
+                });
+                
+                if (!res.ok) throw new Error("Server failed to suggest schema");
+                const suggestedSchema = await res.json();
+                
+                if (schemaTextarea) {
+                    schemaTextarea.value = JSON.stringify(suggestedSchema, null, 2);
+                }
+                appendConsoleLog("Schema suggestion loaded successfully.", "success");
+            } catch (e) {
+                appendConsoleLog(`Failed to suggest schema: ${e.message}`, "warning");
+            } finally {
+                suggestSchemaBtn.disabled = false;
+            }
+        });
+    }
+
+    // Upload Schema File
+    if (uploadSchemaBtn && schemaFileInput) {
+        uploadSchemaBtn.addEventListener('click', () => {
+            schemaFileInput.click();
+        });
+        
+        schemaFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const parsed = JSON.parse(evt.target.result);
+                        if (schemaTextarea) {
+                            schemaTextarea.value = JSON.stringify(parsed, null, 2);
+                        }
+                        appendConsoleLog(`Uploaded schema successfully from ${file.name}.`, "success");
+                    } catch (err) {
+                        appendConsoleLog(`Error: Failed to parse uploaded schema. Invalid JSON file.`, "warning");
+                        alert("Invalid JSON file uploaded.");
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+    }
+
+    // Run Extraction
+    if (runExtractBtn) {
+        runExtractBtn.addEventListener('click', async () => {
+            if (!currentUid) {
+                alert("Please process or select a document first.");
+                return;
+            }
+            
+            let schemaJson;
+            try {
+                schemaJson = JSON.parse(schemaTextarea.value);
+            } catch (err) {
+                alert("Error: Schema text is not valid JSON.");
+                appendConsoleLog("Error: Invalid schema JSON in textarea.", "warning");
+                return;
+            }
+            
+            // UI state: running
+            runExtractBtn.disabled = true;
+            if (suggestSchemaBtn) suggestSchemaBtn.disabled = true;
+            if (uploadSchemaBtn) uploadSchemaBtn.disabled = true;
+            downloadExtractBtn.disabled = true;
+            copyExtractBtn.disabled = true;
+            extractedJsonOutput.textContent = "{}";
+            
+            // Clear console except initial log
+            extractConsole.innerHTML = '<div class="console-line system-line">> Console initialized. Starting extraction...</div>';
+            
+            const selects = document.querySelectorAll('.chat-select');
+            let model = "qwen2.5vl:7b";
+            if (selects.length >= 1) {
+                model = selects[0].value.replace("Model: ", "");
+            }
+            
+            try {
+                const res = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        uid: currentUid,
+                        schema_dict: schemaJson,
+                        model: model,
+                        threshold: threshold
+                    })
+                });
+                
+                if (!res.ok) throw new Error(`Server returned HTTP ${res.status}`);
+                
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunkStr = decoder.decode(value, { stream: true });
+                    const lines = chunkStr.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.substring(6);
+                            if (dataStr === '[DONE]') continue;
+                            
+                            try {
+                                const payload = JSON.parse(dataStr);
+                                if (payload.type === 'log') {
+                                    let type = 'normal';
+                                    if (payload.message.includes('Success')) type = 'success';
+                                    else if (payload.message.includes('Warning') || payload.message.includes('Failed')) type = 'warning';
+                                    else if (payload.message.includes('[Routing]')) type = 'info';
+                                    appendConsoleLog(payload.message, type);
+                                } else if (payload.type === 'result') {
+                                    extractedJsonOutput.textContent = JSON.stringify(payload.data, null, 2);
+                                    if (!payload.data.error) {
+                                        downloadExtractBtn.disabled = false;
+                                        copyExtractBtn.disabled = false;
+                                        appendConsoleLog("Extraction complete. JSON saved.", "success");
+                                    } else {
+                                        appendConsoleLog("Extraction aborted. Failed to extract valid JSON.", "warning");
+                                    }
+                                }
+                            } catch (e) {
+                                // Ignore split chunks
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                appendConsoleLog(`Fatal error during extraction stream: ${err.message}`, "warning");
+            } finally {
+                runExtractBtn.disabled = false;
+                if (suggestSchemaBtn) suggestSchemaBtn.disabled = false;
+                if (uploadSchemaBtn) uploadSchemaBtn.disabled = false;
+            }
+        });
+    }
+
+    // Copy Extracted JSON
+    if (copyExtractBtn) {
+        copyExtractBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(extractedJsonOutput.textContent).then(() => {
+                copyExtractBtn.textContent = "COPIED!";
+                setTimeout(() => {
+                    copyExtractBtn.innerHTML = `
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        COPY
+                    `;
+                }, 1500);
+            }).catch(e => alert("Failed to copy JSON: " + e.message));
+        });
+    }
+
+    // Download Extracted JSON
+    if (downloadExtractBtn) {
+        downloadExtractBtn.addEventListener('click', () => {
+            const jsonText = extractedJsonOutput.textContent;
+            if (!jsonText) return;
+            const blob = new Blob([jsonText], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `extracted_${currentUid || 'document'}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    }
 });
