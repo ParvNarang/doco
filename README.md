@@ -10,15 +10,16 @@ By combining layout-aware VLM OCR pipelines with self-correcting agentic JSON ex
 
 Here is the Doco workspace in action:
 
-![Document Ingestion & OCR Visualization](screenshots/11.png)
-
-![Agentic JSON Extraction & Schema Builder](screenshots/22.png)
+![Document Ingestion & OCR Visualization](screenshots/13.png)
+![Document Ingestion & OCR Visualization](screenshots/14.png)
+![Document Ingestion & OCR Chat](screenshots/15.png)
+![Document Ingestion & OCR Chat](screenshots/16.png)
 
 ---
 
 ## Key Features
 
-* **High-Fidelity Document Processing**: Ingests multi-page PDFs and images using **SuryaOCR** for layout analysis, bounding box coordinates, reading-order alignment, and high-accuracy text recognition.
+* **High-Fidelity Document Processing**: Ingests multi-page PDFs and images using **SuryaOCR** (running via **llama.cpp**) for layout analysis, bounding box coordinates, reading-order alignment, and high-accuracy text recognition.
 * **Agentic JSON Extraction**:
   * **Interactive Schema Builder**: Manually edit, upload a custom `.json` schema, or query the local VLM to automatically **suggest a schema** based on the document's structure.
   * **Self-Correcting Critique Loop**: Validates LLM extractions against the target JSON schema using `jsonschema`. If validation fails, it feeds the exact parser errors back to the model for correction (up to 3 attempts).
@@ -36,8 +37,8 @@ Here is the Doco workspace in action:
 * **Backend**: Python 3.11+, FastAPI, LangChain, Pydantic, jsonschema, PyPDFium2, FAISS, rank-bm25, SentenceTransformers.
 * **Local Models**: 
   * SuryaOCR (OCR, layout detection)
-  * Ollama (`qwen2.5vl:7b`, `nomic-embed-text:v1.5`, `glm-ocr`)
-* **Frontend**: Vanilla HTML5, CSS3 (OLED Dark/Palantir Dashboard design), JavaScript (SSE streaming, JSON validator, responsive panes).
+  * Ollama (`qwen2.5vl:7b`, `qwen3-embedding:0.6b`, `glm-ocr`)
+* **Frontend**: Vanilla HTML5, CSS3, JavaScript (SSE streaming, JSON validator, responsive panes).
 
 ---
 
@@ -46,7 +47,7 @@ Here is the Doco workspace in action:
 ### 1. Prerequisites
 Ensure you have **Ollama** installed on your system. Pull the required models:
 ```bash
-ollama pull nomic-embed-text:v1.5
+ollama pull qwen3-embedding:0.6b
 ollama pull qwen2.5vl:7b
 ```
 
