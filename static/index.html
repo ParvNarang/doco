@@ -275,7 +275,7 @@
                                 <div class="extraction-panel-header">
                                     <span class="panel-title-label">SCHEMA DEFINITION</span>
                                     <div class="routing-badge-container">
-                                        <span id="docLengthBadge" class="badge">Length: 0 Chars</span>
+                                        <!-- <span id="docLengthBadge" class="badge">Length: 0 Chars</span> -->
                                         <!-- <span id="routingBadge" class="badge">Route: N/A</span> -->
                                     </div>
                                 </div>
@@ -285,7 +285,10 @@
                                         <div class="loader-spinner"></div>
                                         <div class="loader-text">Doco is analyzing the document layout to suggest a schema...</div>
                                     </div>
-                                    <textarea id="schemaTextarea" placeholder="Enter target JSON schema here..." class="schema-textarea"></textarea>
+                                    <div class="schema-editor-inner">
+                                        <div id="schemaLineNumbers" class="schema-line-numbers"></div>
+                                        <textarea id="schemaTextarea" placeholder="Enter target JSON schema here..." class="schema-textarea"></textarea>
+                                    </div>
                                 </div>
                                 <div class="extraction-actions">
                                     <button id="suggestSchemaBtn" class="btn btn-outline">

@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const uidDisplay = document.getElementById('uidDisplay');
     
     let currentUid = null;
+    let currentExtractedJson = null;
     
     const loader = document.getElementById('loader');
     const loaderText = document.getElementById('loaderText');
@@ -420,7 +421,73 @@ document.addEventListener('DOMContentLoaded', () => {
         blocksStr += "  ]";
         
         let highlightedBase = syntaxHighlightJson(baseStr);
-        jsonOutput.innerHTML = highlightedBase.replace(/\n\]$/, `,\n${blocksStr}\n]`);
+        let finalHtml = highlightedBase.replace(/\n\]$/, `,\n${blocksStr}\n]`);
+        
+        finalHtml = makeCollapsible(finalHtml);
+        finalHtml = finalHtml.replace(/^/gm, '<span class="json-line-num"></span>');
+        
+        jsonOutput.innerHTML = finalHtml;
+        attachFoldingEvents(jsonOutput);
+    }
+    
+    function makeCollapsible(htmlStr) {
+        const lines = htmlStr.split('\n');
+        let out = [];
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            
+            if (line.match(/(\{|\[)(\s*|<[^>]+>|,)*$/) && !line.match(/"(\s*|<[^>]+>|,)*$/)) {
+                line = line.replace(/(.*)(\{|\[)/, `$1<span class="json-toggle">-</span>$2<span class="json-collapsible">`);
+            }
+            
+            if (line.match(/^\s*(<[^>]+>)*\s*(\}|\])/)) {
+                line = line.replace(/(\}|\])/, `</span><span class="json-ellipsis json-collapsed">...</span>$1`);
+            }
+            
+            out.push(line);
+        }
+        return out.join('\n');
+    }
+
+    function attachFoldingEvents(container) {
+        const toggles = container.querySelectorAll('.json-toggle');
+        toggles.forEach(toggle => {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const content = this.nextElementSibling; // After { is .json-collapsible
+                const ellipsis = content.nextElementSibling; // The ellipsis comes after </span> of collapsible
+                
+                if (content && content.classList.contains('json-collapsible')) {
+                    if (content.classList.contains('json-collapsed')) {
+                        content.classList.remove('json-collapsed');
+                        if (ellipsis) ellipsis.classList.add('json-collapsed');
+                        this.textContent = '-';
+                    } else {
+                        content.classList.add('json-collapsed');
+                        if (ellipsis) ellipsis.classList.remove('json-collapsed');
+                        this.textContent = '+';
+                    }
+                }
+            });
+        });
+        
+        const ellipses = container.querySelectorAll('.json-ellipsis');
+        ellipses.forEach(ellipsis => {
+            ellipsis.addEventListener('click', function(e) {
+                e.stopPropagation();
+                // clicking ellipsis expands it
+                const content = this.previousElementSibling;
+                if (content && content.classList.contains('json-collapsible')) {
+                    content.classList.remove('json-collapsed');
+                    this.classList.add('json-collapsed');
+                    // Find the toggle before the { 
+                    const toggle = content.previousElementSibling.previousElementSibling;
+                    if (toggle && toggle.classList.contains('json-toggle')) {
+                        toggle.textContent = '-';
+                    }
+                }
+            });
+        });
     }
 
     function syntaxHighlightJson(jsonStr) {
@@ -761,6 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadSchemaBtn = document.getElementById('uploadSchemaBtn');
     const schemaFileInput = document.getElementById('schemaFileInput');
     const schemaTextarea = document.getElementById('schemaTextarea');
+    const schemaLineNumbers = document.getElementById('schemaLineNumbers');
     const runExtractBtn = document.getElementById('runExtractBtn');
     const extractConsole = document.getElementById('extractConsole');
     const extractedJsonOutput = document.getElementById('extractedJsonOutput');
@@ -781,8 +849,25 @@ document.addEventListener('DOMContentLoaded', () => {
         "required": ["title", "summary"]
     };
 
+    function updateSchemaLineNumbers() {
+        if (!schemaTextarea || !schemaLineNumbers) return;
+        const linesCount = schemaTextarea.value.split('\n').length;
+        let numbersHtml = '';
+        for (let i = 1; i <= linesCount; i++) {
+            numbersHtml += i + '<br>';
+        }
+        schemaLineNumbers.innerHTML = numbersHtml;
+    }
+
     if (schemaTextarea) {
         schemaTextarea.value = JSON.stringify(defaultSchema, null, 2);
+        if (schemaLineNumbers) {
+            schemaTextarea.addEventListener('input', updateSchemaLineNumbers);
+            schemaTextarea.addEventListener('scroll', () => {
+                schemaLineNumbers.scrollTop = schemaTextarea.scrollTop;
+            });
+            updateSchemaLineNumbers();
+        }
     }
 
     const threshold = 20000;
@@ -867,6 +952,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (schemaTextarea) {
                     schemaTextarea.value = JSON.stringify(suggestedSchema, null, 2);
+                    if (typeof updateSchemaLineNumbers === 'function') updateSchemaLineNumbers();
                 }
                 appendConsoleLog("Schema suggestion loaded successfully.", "success");
             } catch (e) {
@@ -893,6 +979,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const parsed = JSON.parse(evt.target.result);
                         if (schemaTextarea) {
                             schemaTextarea.value = JSON.stringify(parsed, null, 2);
+                            if (typeof updateSchemaLineNumbers === 'function') updateSchemaLineNumbers();
                         }
                         appendConsoleLog(`Uploaded schema successfully from ${file.name}.`, "success");
                     } catch (err) {
@@ -979,7 +1066,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                     else if (payload.message.includes('[Routing]')) type = 'info';
                                     appendConsoleLog(payload.message, type);
                                 } else if (payload.type === 'result') {
-                                    extractedJsonOutput.textContent = JSON.stringify(payload.data, null, 2);
+                                    currentExtractedJson = payload.data;
+                                    let rawJson = JSON.stringify(payload.data, null, 2);
+                                    let highlightedHtml = syntaxHighlightJson(rawJson);
+                                    highlightedHtml = makeCollapsible(highlightedHtml);
+                                    highlightedHtml = highlightedHtml.replace(/^/gm, '<span class="json-line-num"></span>');
+                                    extractedJsonOutput.innerHTML = highlightedHtml;
+                                    attachFoldingEvents(extractedJsonOutput);
                                     if (!payload.data.error) {
                                         downloadExtractBtn.disabled = false;
                                         copyExtractBtn.disabled = false;
@@ -1009,7 +1102,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Copy Extracted JSON
     if (copyExtractBtn) {
         copyExtractBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(extractedJsonOutput.textContent).then(() => {
+            if (!currentExtractedJson) return;
+            navigator.clipboard.writeText(JSON.stringify(currentExtractedJson, null, 2)).then(() => {
                 copyExtractBtn.textContent = "COPIED!";
                 setTimeout(() => {
                     copyExtractBtn.innerHTML = `
@@ -1024,9 +1118,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Download Extracted JSON
     if (downloadExtractBtn) {
         downloadExtractBtn.addEventListener('click', () => {
-            const jsonText = extractedJsonOutput.textContent;
-            if (!jsonText) return;
-            const blob = new Blob([jsonText], { type: 'application/json' });
+            if (!currentExtractedJson) return;
+            const blob = new Blob([JSON.stringify(currentExtractedJson, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;

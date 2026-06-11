@@ -17,18 +17,10 @@ def strip_html_tags(text):
     clean = re.compile('<.*?>')
     return re.sub(clean, '', text)
 
-EMBEDDING_MODEL = "nomic-embed-text:v1.5"
-
-class NomicOllamaEmbeddings(OllamaEmbeddings):
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        prefixed_texts = [f"search_document: {t}" for t in texts]
-        return super().embed_documents(prefixed_texts)
-        
-    def embed_query(self, text: str) -> list[float]:
-        return super().embed_query(f"search_query: {text}")
+EMBEDDING_MODEL = "qwen3-embedding:0.6b"
 
 def get_embeddings():
-    return NomicOllamaEmbeddings(model=EMBEDDING_MODEL)
+    return OllamaEmbeddings(model=EMBEDDING_MODEL)
 
 _cross_encoder = None
 def get_cross_encoder():
@@ -56,7 +48,7 @@ def build_index(uid: str):
         pages_data = json.load(f)
     # pyrefly: ignore [missing-import]
     from langchain_text_splitters import RecursiveCharacterTextSplitter
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=100)
     
     docs = []
     for page in pages_data:
@@ -160,6 +152,12 @@ def generate_answer(query: str, retrieved_chunks: list, model_name: str = "qwen2
         context_parts.append(f"--- Chunk {i+1} (Page {pg}) ---\n{res['text']}")
         
     context_text = "\n\n".join(context_parts)
+    
+    print("\n" + "="*50)
+    print("DEBUG: RETRIEVED CONTEXT CHUNKS")
+    print("="*50)
+    print(context_text)
+    print("="*50 + "\n")
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You are an intelligent assistant. Use the following extracted context from a document to answer the user's question. If the answer is not contained within the context, simply state that you cannot find the answer in the document. Do not hallucinate.\n\nContext:\n{context}"),

@@ -704,6 +704,56 @@ h1, h2, h3, h4, h5, h6 {
 .json-string { color: #c2410c; }
 .json-output .property { color: var(--accent-green); }
 
+/* JSON Line Numbers */
+.code-wrapper pre code {
+    counter-reset: line;
+}
+.json-line-num {
+    counter-increment: line;
+}
+.json-line-num::before {
+    content: counter(line);
+    display: inline-block;
+    width: 2.5em;
+    padding-right: 0.5em;
+    margin-right: 0.5em;
+    color: var(--text-muted);
+    border-right: 1px solid var(--border-color);
+    text-align: right;
+    user-select: none;
+}
+
+/* Code Folding */
+.json-toggle {
+    cursor: pointer;
+    color: var(--text-muted);
+    user-select: none;
+    margin-right: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    background: var(--bg-hover);
+    font-size: 10px;
+    font-weight: bold;
+}
+.json-toggle:hover {
+    background: var(--border-color);
+}
+.json-collapsed {
+    display: none !important;
+}
+.json-ellipsis {
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+.json-ellipsis:hover {
+    color: var(--text-primary);
+}
+
 /* Chat Interface - OLED Cursor Theme */
 #chatView {
     background-color: var(--bg-base);
@@ -1195,19 +1245,32 @@ h1, h2, h3, h4, h5, h6 {
     min-height: 0;
 }
 
+.schema-editor-inner {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: #ffffff;
+    overflow: hidden;
+    position: relative;
+}
+
 .schema-textarea {
     width: 100%;
     flex: 1;
-    background: #ffffff;
-    border: 1px solid var(--border-color);
+    background: transparent;
+    border: none;
     color: var(--text-primary);
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 0.75rem;
     line-height: 1.5;
     padding: 10px;
-    border-radius: 4px;
     resize: none;
     outline: none;
+    margin: 0;
+
     transition: all 0.2s ease;
     min-height: 0;
 }
@@ -1410,3 +1473,16 @@ h1, h2, h3, h4, h5, h6 {
     background: var(--bg-panel);
 }
 
+.schema-line-numbers {
+    padding: 10px 8px;
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: right;
+    border-right: 1px solid var(--border-color);
+    user-select: none;
+    overflow-y: hidden;
+    min-width: 30px;
+}
