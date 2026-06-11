@@ -1088,8 +1088,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const colorInputs = document.querySelectorAll('#bboxColorPanel input[type="color"]');
 
     const defaultColors = {
-        'text': '#1f6443',
-        'section-header': '#dc2626',
+        'text': '#0091ff',
+        'section-header': '#2cdd38',
         'table': '#0891b2',
         'page-header': '#ea580c',
         'page-footer': '#6d28d9',

@@ -13,15 +13,15 @@
     --accent-blue-hover: #164e33;
     --accent-blue-dim: #e7f1e9;
     /* BBox Label Colors (Vibrant, high-contrast theme) */
-    --color-section-header-bg: rgba(220, 38, 38, 0.12);
-    --color-section-header-border: rgba(220, 38, 38, 0.65);
-    --color-section-header-hover-bg: rgba(220, 38, 38, 0.22);
-    --color-section-header-hover-border: rgba(220, 38, 38, 1.0);
+    --color-section-header-bg: rgba(44, 221, 56, 0.12);
+    --color-section-header-border: rgba(44, 221, 56, 0.65);
+    --color-section-header-hover-bg: rgba(44, 221, 56, 0.22);
+    --color-section-header-hover-border: rgba(44, 221, 56, 1.0);
 
-    --color-text-bg: rgba(31, 100, 67, 0.12);
-    --color-text-border: rgba(31, 100, 67, 0.65);
-    --color-text-hover-bg: rgba(31, 100, 67, 0.22);
-    --color-text-hover-border: rgba(31, 100, 67, 1.0);
+    --color-text-bg: rgba(0, 145, 255, 0.12);
+    --color-text-border: rgba(0, 145, 255, 0.65);
+    --color-text-hover-bg: rgba(0, 145, 255, 0.22);
+    --color-text-hover-border: rgba(0, 145, 255, 1.0);
 
     --color-table-bg: rgba(8, 145, 178, 0.12);
     --color-table-border: rgba(8, 145, 178, 0.65);
