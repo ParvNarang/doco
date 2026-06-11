@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Display UID & Type
             const fileExt = currentFile.name.split('.').pop().toUpperCase();
             currentUid = data.uid;
-            uidDisplay.textContent = `TYPE: ${fileExt} | DOC: ${data.uid}`;
+            uidDisplay.textContent = `type: ${fileExt} | id: ${data.uid}`;
 
             // Populate Tabs
             renderAllPages();
@@ -450,10 +450,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Coordinates usually [x1, y1, x2, y2]
         const [x1, y1, x2, y2] = block.bbox;
         
-        const leftPct = (x1 / pageWidth) * 100;
-        const topPct = (y1 / pageHeight) * 100;
-        const widthPct = ((x2 - x1) / pageWidth) * 100;
-        const heightPct = ((y2 - y1) / pageHeight) * 100;
+        const leftPct = (x1 / pageWidth) * 100 + 0.20;
+        const topPct = ((y1 / pageHeight) * 100) + 0.23; // Shift slightly down by 0.5% for better alignment with text
+        const widthPct = ((x2 - x1) / pageWidth) * 100 + 0.18;
+        const heightPct = ((y2 - y1) / pageHeight) * 100 + 0.15;
         
         overlay.style.left = `${leftPct}%`;
         overlay.style.top = `${topPct}%`;
@@ -769,25 +769,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Default schema placeholder
     const defaultSchema = {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ExtractedData",
-      "type": "object",
-      "properties": {
-        "document_type": {
-          "type": "string",
-          "description": "Invoice, Receipt, Resume, Form, Report, etc."
+        "type": "object",
+        "properties": {
+            "title": { "type": "string" },
+            "summary": { "type": "string" },
+            "entities": {
+            "type": "array",
+            "items": { "type": "string" }
+            }
         },
-        "key_entities": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "List of key names, vendors, candidates, or entities mentioned"
-        },
-        "summary": {
-          "type": "string",
-          "description": "A high-level summary of the document contents"
-        }
-      },
-      "required": ["document_type", "summary"]
+        "required": ["title", "summary"]
     };
 
     if (schemaTextarea) {
@@ -1044,6 +1035,144 @@ document.addEventListener('DOMContentLoaded', () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        });
+    }
+
+    // Document Viewer Controls: Zoom Logic
+    let currentZoom = 100;
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomResetBtn = document.getElementById('zoomResetBtn');
+    const zoomLabel = document.getElementById('zoomLabel');
+    const viewerContent = document.getElementById('viewerContent');
+
+    function applyZoom() {
+        if (viewerContent) {
+            viewerContent.style.setProperty('--zoom-level', currentZoom / 100);
+        }
+        if (zoomLabel) {
+            zoomLabel.textContent = `${currentZoom}%`;
+        }
+    }
+
+    if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', () => {
+            if (currentZoom < 200) {
+                currentZoom += 10;
+                applyZoom();
+            }
+        });
+    }
+
+    if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', () => {
+            if (currentZoom > 50) {
+                currentZoom -= 10;
+                applyZoom();
+            }
+        });
+    }
+
+    if (zoomResetBtn) {
+        zoomResetBtn.addEventListener('click', () => {
+            currentZoom = 100;
+            applyZoom();
+        });
+    }
+
+    // Color Customizer Toggle and Input Bindings
+    const toggleColorPanelBtn = document.getElementById('toggleColorPanelBtn');
+    const closeColorPanelBtn = document.getElementById('closeColorPanelBtn');
+    const bboxColorPanel = document.getElementById('bboxColorPanel');
+    const resetColorsBtn = document.getElementById('resetColorsBtn');
+    const colorInputs = document.querySelectorAll('#bboxColorPanel input[type="color"]');
+
+    const defaultColors = {
+        'text': '#1f6443',
+        'section-header': '#dc2626',
+        'table': '#0891b2',
+        'page-header': '#ea580c',
+        'page-footer': '#6d28d9',
+        'title': '#d97706',
+        'image': '#0d9488',
+        'list': '#db2777',
+        'caption': '#7c3aed',
+        'default': '#1f6443'
+    };
+
+    if (toggleColorPanelBtn && bboxColorPanel) {
+        toggleColorPanelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bboxColorPanel.classList.toggle('hidden');
+        });
+        
+        // Prevent click outside panel from closing if clicking inside
+        bboxColorPanel.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Click outside closes panel
+        document.addEventListener('click', () => {
+            bboxColorPanel.classList.add('hidden');
+        });
+    }
+
+    if (closeColorPanelBtn && bboxColorPanel) {
+        closeColorPanelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bboxColorPanel.classList.add('hidden');
+        });
+    }
+
+    function hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function updateBBoxStyles(label, hex) {
+        const borderVar = `--color-${label}-border`;
+        const bgVar = `--color-${label}-bg`;
+        const hoverBgVar = `--color-${label}-hover-bg`;
+        const hoverBorderVar = `--color-${label}-hover-border`;
+
+        const baseBg = hexToRgba(hex, 0.12);
+        const baseBorder = hexToRgba(hex, 0.65);
+        const hoverBg = hexToRgba(hex, 0.22);
+        const hoverBorder = hexToRgba(hex, 1.0);
+
+        document.documentElement.style.setProperty(borderVar, baseBorder);
+        document.documentElement.style.setProperty(bgVar, baseBg);
+        document.documentElement.style.setProperty(hoverBgVar, hoverBg);
+        document.documentElement.style.setProperty(hoverBorderVar, hoverBorder);
+    }
+
+    colorInputs.forEach(input => {
+        input.addEventListener('input', (e) => {
+            const label = e.target.dataset.label;
+            const hex = e.target.value;
+            updateBBoxStyles(label, hex);
+        });
+    });
+
+    if (resetColorsBtn) {
+        resetColorsBtn.addEventListener('click', () => {
+            colorInputs.forEach(input => {
+                const label = input.dataset.label;
+                const defaultHex = defaultColors[label] || '#1f6443';
+                input.value = defaultHex;
+                
+                const borderVar = `--color-${label}-border`;
+                const bgVar = `--color-${label}-bg`;
+                const hoverBgVar = `--color-${label}-hover-bg`;
+                const hoverBorderVar = `--color-${label}-hover-border`;
+
+                document.documentElement.style.removeProperty(borderVar);
+                document.documentElement.style.removeProperty(bgVar);
+                document.documentElement.style.removeProperty(hoverBgVar);
+                document.documentElement.style.removeProperty(hoverBorderVar);
+            });
         });
     }
 });

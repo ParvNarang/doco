@@ -68,16 +68,86 @@
             </section>
             
             <!-- Center Pane: Image Viewer -->
-            <section class="pane viewer-pane">
+            <section class="pane viewer-pane" style="position: relative;">
                 <div class="pane-header" style="justify-content: space-between;">
                     <div>
                         <span class="pane-title">DOCUMENT SOURCE : </span>
                         <span id="fileName" class="badge" title="No file chosen">NONE  </span>
-                        <span id="uidDisplay" class="badge">   </span>
+                    </div>
+                    <div class="viewer-controls" style="display: flex; align-items: center; gap: 8px;">
+                        <button id="zoomOutBtn" class="btn-icon" title="Zoom Out" style="color: var(--text-muted);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                        <span id="zoomLabel" class="zoom-label" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.75rem; color: var(--text-muted); min-width: 38px; text-align: center;">100%</span>
+                        <button id="zoomInBtn" class="btn-icon" title="Zoom In" style="color: var(--text-muted);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                        <button id="zoomResetBtn" class="btn-icon" title="Reset Zoom" style="color: var(--text-muted);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                        </button>
+                        <span style="height: 16px; width: 1px; background: var(--border-color); margin: 0 4px;"></span>
+                        <button id="toggleColorPanelBtn" class="btn-icon" title="Customize Colors" style="color: var(--text-muted);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C4.85857 19 6 20 7.5 20C9 20 9 22 12 22Z"></path><circle cx="7.5" cy="10.5" r="1" fill="currentColor"></circle><circle cx="11.5" cy="7.5" r="1" fill="currentColor"></circle><circle cx="16.5" cy="9.5" r="1" fill="currentColor"></circle><circle cx="15.5" cy="14.5" r="1" fill="currentColor"></circle></svg>
+                        </button>
                     </div>
                 </div>
                 <div class="pane-content viewer-content" id="viewerContent">
                     <!-- Images and BBox overlays will be injected here dynamically -->
+                </div>
+
+                <!-- BBox Color Settings Panel -->
+                <div id="bboxColorPanel" class="color-panel hidden">
+                    <div class="color-panel-header">
+                        <h4>Bounding Box Colors</h4>
+                        <button id="closeColorPanelBtn" class="btn-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                    <div class="color-panel-body">
+                        <div class="color-picker-row">
+                            <label>Text</label>
+                            <input type="color" data-label="text" value="#1f6443">
+                        </div>
+                        <div class="color-picker-row">
+                            <label>Section Header</label>
+                            <input type="color" data-label="section-header" value="#dc2626">
+                        </div>
+                        <div class="color-picker-row">
+                            <label>Table</label>
+                            <input type="color" data-label="table" value="#0891b2">
+                        </div>
+                        <div class="color-picker-row">
+                            <label>Page Header</label>
+                            <input type="color" data-label="page-header" value="#ea580c">
+                        </div>
+                        <div class="color-picker-row">
+                            <label>Page Footer</label>
+                            <input type="color" data-label="page-footer" value="#6d28d9">
+                        </div>
+                        <div class="color-picker-row">
+                            <label>Title</label>
+                            <input type="color" data-label="title" value="#d97706">
+                        </div>
+                        <div class="color-picker-row">
+                            <label>Image/Picture</label>
+                            <input type="color" data-label="image" value="#0d9488">
+                        </div>
+                        <div class="color-picker-row">
+                            <label>List</label>
+                            <input type="color" data-label="list" value="#db2777">
+                        </div>
+                        <div class="color-picker-row">
+                            <label>Caption</label>
+                            <input type="color" data-label="caption" value="#7c3aed">
+                        </div>
+                        <div class="color-picker-row">
+                            <label>Default</label>
+                            <input type="color" data-label="default" value="#1f6443">
+                        </div>
+                    </div>
+                    <div class="color-panel-footer">
+                        <button id="resetColorsBtn" class="btn btn-sm btn-outline" style="width: 100%; justify-content: center;">Reset to Defaults</button>
+                    </div>
                 </div>
             </section>
             
@@ -108,6 +178,7 @@
                     <div id="htmlView" class="tab-content active">
                         <div class="toolbar">
                             <div style="display: flex; gap: 8px;">
+                                <span id="uidDisplay" class="badge"></span>
                                 <button id="downloadMdBtn" class="btn btn-sm btn-outline">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                     DOWNLOAD
@@ -160,7 +231,7 @@
                             </div>
                             <div class="chat-input-area">
                                 <div class="chat-input-wrapper">
-                                    <textarea placeholder="Ask anything, /clear to clear chat" class="chat-textarea" rows="1"></textarea>
+                                    <textarea placeholder="Ask anything , type /clear to clear chat" class="chat-textarea" rows="1"></textarea>
                                     <div class="chat-input-bottom">
                                         <div class="chat-selects">
                                             <select class="chat-select">
@@ -205,7 +276,7 @@
                                     <span class="panel-title-label">SCHEMA DEFINITION</span>
                                     <div class="routing-badge-container">
                                         <span id="docLengthBadge" class="badge">Length: 0 Chars</span>
-                                        <span id="routingBadge" class="badge">Route: N/A</span>
+                                        <!-- <span id="routingBadge" class="badge">Route: N/A</span> -->
                                     </div>
                                 </div>
                                 <div class="schema-editor-wrapper">

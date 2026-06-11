@@ -51,25 +51,18 @@ def suggest_schema(document_text: str, model_name: str = "qwen2.5vl:7b") -> dict
         print(f"Error suggesting schema: {e}")
         # Default fallback schema
         return {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "title": "DefaultDocumentSchema",
+           {
             "type": "object",
             "properties": {
-                "document_title": {
-                    "type": "string",
-                    "description": "The title or subject of the document"
-                },
-                "key_entities": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                    "description": "List of key names, organizations, or dates"
-                },
-                "summary": {
-                    "type": "string",
-                    "description": "A brief summary of the document"
+                "title": { "type": "string" },
+                "summary": { "type": "string" },
+                "entities": {
+                "type": "array",
+                "items": { "type": "string" }
                 }
             },
-            "required": ["document_title", "summary"]
+            "required": ["title", "summary"]
+            }
         }
 
 def clean_json_output(output_str: str) -> str:
