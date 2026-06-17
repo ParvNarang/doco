@@ -141,9 +141,9 @@ def retrieve(uid: str, query: str, top_k: int = 5):
         
     return results
 
-def generate_answer(query: str, retrieved_chunks: list, model_name: str = None):
+def generate_answer(query: str, retrieved_chunks: list, model_name: str | None = None):
     """Uses Ollama to generate an answer based ONLY on the retrieved chunks."""
-    model_name = model_name or settings.LLM_MODEL
+    model_name = settings.LLM_MODEL if model_name is None else model_name
     llm = ChatOllama(model=model_name)
     
     # Construct context from chunks
