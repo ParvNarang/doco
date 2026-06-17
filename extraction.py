@@ -78,13 +78,18 @@ def clean_json_output(output_str: str) -> str:
         clean = clean[:-3]
     return clean.strip()
 
-def run_agentic_extraction(document_text: str, schema: dict, model_name: str = None, threshold: int = None):
+def run_agentic_extraction(
+    document_text: str,
+    schema: dict,
+    model_name: str | None = None,
+    threshold: int | None = None,
+):
     """
     Runs extraction. If length is over threshold, logs switching to chunking
     and executes a truncated fallback direct extraction. Otherwise, executes direct agentic extraction.
     """
-    model_name = model_name or settings.LLM_MODEL
-    threshold = threshold if threshold is not None else settings.EXTRACTION_THRESHOLD
+    model_name = settings.LLM_MODEL if model_name is None else model_name
+    threshold = settings.EXTRACTION_THRESHOLD if threshold is None else threshold
     doc_len = len(document_text)
     
     # SSE logs helper
