@@ -62,7 +62,18 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Start the Platform
+### 3. Configuration (Optional)
+The platform uses sensible defaults, but you can override models and other settings using an environment file. 
+Create a `.env` file in the root directory:
+```bash
+# Example .env overrides
+LLM_MODEL=qwen2.5vl:7b
+EMBEDDING_MODEL=qwen3-embedding:0.6b
+RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
+EXTRACTION_THRESHOLD=30000
+```
+
+### 4. Start the Platform
 Run the FastAPI development server:
 ```bash
 python main.py

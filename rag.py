@@ -13,14 +13,14 @@ from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 
+from config import settings
+
 def strip_html_tags(text):
     clean = re.compile('<.*?>')
     return re.sub(clean, '', text)
 
-EMBEDDING_MODEL = "qwen3-embedding:0.6b"
-
 def get_embeddings():
-    return OllamaEmbeddings(model=EMBEDDING_MODEL)
+    return OllamaEmbeddings(model=settings.EMBEDDING_MODEL)
 
 _cross_encoder = None
 def get_cross_encoder():
@@ -28,7 +28,7 @@ def get_cross_encoder():
     if _cross_encoder is None:
         # pyrefly: ignore [missing-import]
         from sentence_transformers import CrossEncoder
-        _cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        _cross_encoder = CrossEncoder(settings.RERANKER_MODEL)
     return _cross_encoder
 
 def build_index(uid: str):
@@ -141,8 +141,9 @@ def retrieve(uid: str, query: str, top_k: int = 5):
         
     return results
 
-def generate_answer(query: str, retrieved_chunks: list, model_name: str = "qwen2.5vl:7b"):
+def generate_answer(query: str, retrieved_chunks: list, model_name: str = None):
     """Uses Ollama to generate an answer based ONLY on the retrieved chunks."""
+    model_name = model_name or settings.LLM_MODEL
     llm = ChatOllama(model=model_name)
     
     # Construct context from chunks

@@ -5,9 +5,11 @@ import jsonschema
 # pyrefly: ignore [missing-import]
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
+from config import settings
 
-def suggest_schema(document_text: str, model_name: str = "qwen2.5vl:7b") -> dict:
+def suggest_schema(document_text: str, model_name: str = None) -> dict:
     """Uses Ollama to suggest a suitable JSON schema based on the document text."""
+    model_name = model_name or settings.LLM_MODEL
     # Truncate text to avoid model context overflow
     sample_text = document_text[:8000]
     
@@ -76,11 +78,13 @@ def clean_json_output(output_str: str) -> str:
         clean = clean[:-3]
     return clean.strip()
 
-def run_agentic_extraction(document_text: str, schema: dict, model_name: str = "qwen2.5vl:7b", threshold: int = 30000):
+def run_agentic_extraction(document_text: str, schema: dict, model_name: str = None, threshold: int = None):
     """
     Runs extraction. If length is over threshold, logs switching to chunking
     and executes a truncated fallback direct extraction. Otherwise, executes direct agentic extraction.
     """
+    model_name = model_name or settings.LLM_MODEL
+    threshold = threshold if threshold is not None else settings.EXTRACTION_THRESHOLD
     doc_len = len(document_text)
     
     # SSE logs helper
