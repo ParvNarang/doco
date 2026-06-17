@@ -7,9 +7,9 @@ from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from config import settings
 
-def suggest_schema(document_text: str, model_name: str = None) -> dict:
+def suggest_schema(document_text: str, model_name: str | None = None) -> dict:
     """Uses Ollama to suggest a suitable JSON schema based on the document text."""
-    model_name = model_name or settings.LLM_MODEL
+    model_name = settings.LLM_MODEL if model_name is None else model_name
     # Truncate text to avoid model context overflow
     sample_text = document_text[:8000]
     
