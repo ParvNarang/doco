@@ -29,7 +29,7 @@ def suggest_schema(document_text: str, model_name: str | None = None) -> dict:
     """
     
     try:
-        llm = ChatOllama(model=model_name, format="json", temperature=0.2)
+        llm = ChatOllama(model=model_name, format="json", temperature=0.2, timeout=300)
         response = llm.invoke(prompt)
         schema_candidate = response.content.strip()
         
@@ -117,7 +117,7 @@ def run_agentic_extraction(
     error_msg = ""
     extracted_json = None
     
-    llm = ChatOllama(model=model_name, format="json", temperature=0.0)
+    llm = ChatOllama(model=model_name, format="json", temperature=0.0, timeout=300)
     
     while attempt < max_attempts:
         attempt += 1

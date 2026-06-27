@@ -1,0 +1,21 @@
+[project]
+name = "doco"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.137.1",
+    "jsonschema>=4.26.0",
+    "langchain-classic>=1.0.8",
+    "langchain-community>=0.4.2",
+    "langchain-core>=1.4.7",
+    "langchain-ollama>=1.1.0",
+    "psutil>=7.2.2",
+    "pydantic-settings>=2.14.1",
+    "python-docx>=1.1.2",
+    "python-multipart>=0.0.32",
+    "sentence-transformers>=5.6.0",
+    "surya-ocr>=0.20.0",
+    "uvicorn>=0.49.0",
+]

@@ -144,7 +144,7 @@ def retrieve(uid: str, query: str, top_k: int = 5):
 def generate_answer(query: str, retrieved_chunks: list, model_name: str | None = None):
     """Uses Ollama to generate an answer based ONLY on the retrieved chunks."""
     model_name = settings.LLM_MODEL if model_name is None else model_name
-    llm = ChatOllama(model=model_name)
+    llm = ChatOllama(model=model_name, timeout=300)
     
     # Construct context from chunks
     context_parts = []
@@ -168,3 +168,91 @@ def generate_answer(query: str, retrieved_chunks: list, model_name: str | None =
     chain = prompt | llm
     for chunk in chain.stream({"context": context_text, "question": query}):
         yield chunk.content
+
+
+def retrieve_all(query: str, top_k: int = 5) -> list:
+    """
+    Cross-document hybrid retrieval across ALL ingested documents.
+    Iterates every uid in data/, runs BM25+FAISS ensemble per document,
+    pools all candidates, then re-ranks globally with the cross-encoder.
+
+    Returns list of dicts: [{text, metadata: {page_num, source_uid, source_name}}]
+    """
+    data_dir = "data"
+    if not os.path.exists(data_dir):
+        return []
+
+    embeddings = get_embeddings()
+    pool_k = top_k * 4
+    all_pool_docs = []
+
+    for uid in os.listdir(data_dir):
+        uid_dir = os.path.join(data_dir, uid)
+        if not os.path.isdir(uid_dir):
+            continue
+
+        index_path = os.path.join(uid_dir, "faiss_index")
+        bm25_path = os.path.join(uid_dir, "bm25_index.pkl")
+
+        if not os.path.exists(index_path) or not os.path.exists(bm25_path):
+            try:
+                build_index(uid)
+            except Exception:
+                continue
+
+        if not os.path.exists(index_path) or not os.path.exists(bm25_path):
+            continue
+
+        source_name = uid
+        meta_path = os.path.join(uid_dir, "metadata.json")
+        if os.path.exists(meta_path):
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    source_name = json.load(f).get("filename", uid)
+            except Exception:
+                pass
+
+        try:
+            vectorstore = FAISS.load_local(
+                index_path, embeddings, allow_dangerous_deserialization=True
+            )
+            faiss_retriever = vectorstore.as_retriever(
+                search_kwargs={"k": pool_k}
+            )
+
+            with open(bm25_path, "rb") as f:
+                bm25_retriever = pickle.load(f)
+            bm25_retriever.k = pool_k
+
+            ensemble = EnsembleRetriever(
+                retrievers=[bm25_retriever, faiss_retriever],
+                weights=[0.5, 0.5],
+            )
+            docs = ensemble.invoke(query)
+
+            for doc in docs:
+                doc.metadata["source_uid"] = uid
+                doc.metadata["source_name"] = source_name
+
+            all_pool_docs.extend(docs)
+
+        except Exception as e:
+            print(f"[retrieve_all] skipping {uid}: {e}")
+            continue
+
+    if not all_pool_docs:
+        return []
+
+    encoder = get_cross_encoder()
+    pairs = [[query, doc.page_content] for doc in all_pool_docs]
+    scores = encoder.predict(pairs)
+    ranked = sorted(zip(all_pool_docs, scores), key=lambda x: x[1], reverse=True)
+    top = [doc for doc, _ in ranked[:top_k]]
+
+    return [
+        {
+            "text": doc.page_content,
+            "metadata": doc.metadata,
+        }
+        for doc in top
+    ]

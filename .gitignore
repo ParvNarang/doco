@@ -1,5 +1,21 @@
 .venv/
 .env
+.env.*
 assets/
 data/
+documents/
 __pycache__/
+.python-version
+
+# IDE / Linting Caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Docs
+plan.md
+TECHNICAL.md

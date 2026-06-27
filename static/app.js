@@ -935,7 +935,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appendConsoleLog("Contacting model to analyze content and suggest schema...", "info");
             
             const selects = document.querySelectorAll('.chat-select');
-            let model = "qwen2.5vl:7b";
+            let model = "qwen3.5:0.8b";
             if (selects.length >= 1) {
                 model = selects[0].value.replace("Model: ", "");
             }
@@ -1023,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', () => {
             extractConsole.innerHTML = '<div class="console-line system-line">> Console initialized. Starting extraction...</div>';
             
             const selects = document.querySelectorAll('.chat-select');
-            let model = "qwen2.5vl:7b";
+            let model = "qwen3.5:0.8b";
             if (selects.length >= 1) {
                 model = selects[0].value.replace("Model: ", "");
             }

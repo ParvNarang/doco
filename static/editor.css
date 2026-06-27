@@ -1,0 +1,476 @@
+/* ─── Reset & base ────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f7f7f5;
+  color: #1a1a1a;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Buttons ─────────────────────────────────────────── */
+.btn-primary {
+  background: #2563eb; color: #fff;
+  border: none; border-radius: 6px;
+  padding: 8px 16px; font-size: 14px;
+  cursor: pointer; font-weight: 500;
+}
+.btn-primary:hover { background: #1d4ed8; }
+
+.btn-secondary {
+  background: #fff; color: #2563eb;
+  border: 1px solid #2563eb; border-radius: 6px;
+  padding: 6px 14px; font-size: 13px;
+  cursor: pointer; font-weight: 500;
+}
+.btn-secondary:hover { background: #eff6ff; }
+
+/* ─── Document list view ──────────────────────────────── */
+#list-view {
+  max-width: 780px;
+  margin: 60px auto;
+  padding: 0 24px;
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.list-header h1 { flex: 1; font-size: 28px; font-weight: 700; }
+
+.back-link {
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 14px;
+}
+.back-link:hover { color: #111; }
+
+.doc-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.doc-card:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  border-color: #d1d5db;
+}
+.doc-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.doc-card-meta {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.loading-msg { color: #9ca3af; font-size: 14px; }
+.empty-msg   { color: #9ca3af; font-size: 14px; text-align: center; padding: 60px 0; }
+
+/* ─── Editor view layout ──────────────────────────────── */
+#editor-view {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Top bar */
+#editor-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.topbar-btn {
+  background: none; border: none;
+  color: #6b7280; font-size: 13px;
+  cursor: pointer; padding: 4px 8px;
+  border-radius: 4px;
+}
+.topbar-btn:hover { background: #f3f4f6; }
+
+#doc-title-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111;
+  background: transparent;
+  max-width: 480px;
+}
+
+.save-status {
+  font-size: 12px;
+  color: #9ca3af;
+  min-width: 60px;
+  text-align: right;
+}
+.save-status.saving { color: #f59e0b; }
+.save-status.error  { color: #ef4444; }
+
+/* Quill toolbar */
+#toolbar {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb !important;
+  border-top: none !important;
+  padding: 4px 16px;
+  flex-shrink: 0;
+}
+
+/* Main layout */
+#editor-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Editor wrapper */
+#editor-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+#quill-editor {
+  min-height: calc(100vh - 120px);
+  font-size: 16px;
+  line-height: 1.7;
+  padding: 40px 80px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* Override Quill borders */
+.ql-container.ql-snow {
+  border: none !important;
+  font-size: 16px;
+}
+.ql-toolbar.ql-snow {
+  border: none !important;
+}
+
+/* ─── Proposal panel ──────────────────────────────────── */
+#proposal-panel {
+  /* Always a flex child -- never removed from flow */
+  flex-shrink: 0;
+  overflow: hidden;
+
+  /* Hidden state: collapse to zero width */
+  max-width: 0;
+  padding: 0;
+  border-left: 0px solid #e5e7eb;
+  opacity: 0;
+
+  /* Slide animation */
+  transition: max-width 0.25s ease,
+              padding    0.25s ease,
+              opacity    0.2s ease,
+              border-left-width 0.25s ease;
+
+  /* Internal layout (active when visible) */
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+#proposal-panel.panel-visible {
+  max-width: 360px;
+  padding: 20px;
+  border-left-width: 1px;
+  opacity: 1;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-icon { font-size: 18px; color: #7c3aed; }
+.panel-title { font-size: 14px; font-weight: 700; flex: 1; }
+.dismiss-btn {
+  background: none; border: none;
+  color: #9ca3af; cursor: pointer;
+  font-size: 16px; padding: 2px;
+}
+.dismiss-btn:hover { color: #374151; }
+
+.panel-reason {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.diff-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+}
+
+.diff-original {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #ef4444;
+  text-decoration: line-through;
+  background: #fef2f2;
+  padding: 10px 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.diff-proposed {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #166534;
+  background: #f0fdf4;
+  padding: 10px 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 10px;
+}
+.btn-accept {
+  flex: 1;
+  background: #16a34a; color: #fff;
+  border: none; border-radius: 6px;
+  padding: 9px 0; font-size: 14px;
+  cursor: pointer; font-weight: 600;
+}
+.btn-accept:hover { background: #15803d; }
+
+.btn-reject {
+  flex: 1;
+  background: #fff; color: #dc2626;
+  border: 1px solid #dc2626; border-radius: 6px;
+  padding: 9px 0; font-size: 14px;
+  cursor: pointer; font-weight: 600;
+}
+.btn-reject:hover { background: #fef2f2; }
+
+.panel-hint {
+  font-size: 11px;
+  color: #d1d5db;
+  text-align: center;
+}
+
+/* ─── Markdown rendered content inside proposal panel ──────── */
+#proposed-text h1 {
+  font-size: 20px; font-weight: 700; color: #111;
+  margin: 16px 0 8px; line-height: 1.3;
+}
+#proposed-text h2 {
+  font-size: 16px; font-weight: 700; color: #111;
+  margin: 14px 0 6px; line-height: 1.4;
+}
+#proposed-text h3 {
+  font-size: 14px; font-weight: 600; color: #374151;
+  margin: 12px 0 4px; line-height: 1.4;
+}
+#proposed-text p {
+  font-size: 13px; line-height: 1.65; color: #1f2937;
+  margin: 0 0 8px;
+}
+#proposed-text ul, #proposed-text ol {
+  font-size: 13px; line-height: 1.65; color: #1f2937;
+  margin: 0 0 8px; padding-left: 20px;
+}
+#proposed-text li { margin-bottom: 2px; }
+#proposed-text strong { font-weight: 700; color: #111; }
+#proposed-text table {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px; margin: 8px 0;
+}
+#proposed-text th, #proposed-text td {
+  border: 1px solid #e5e7eb; padding: 6px 8px;
+  text-align: left; color: #1f2937;
+}
+#proposed-text th {
+  background: #f9fafb; font-weight: 600;
+  font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: #6b7280;
+}
+#proposed-text tr:nth-child(even) { background: #fafafa; }
+
+/* ─── Agent status indicator (temporary, during processing) ── */
+.agent-status {
+  position: fixed;
+  bottom: 60px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  z-index: 100;
+  transition: opacity 0.2s;
+}
+.agent-status.hidden { opacity: 0; pointer-events: none; }
+
+.agent-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #7c3aed;
+  animation: pulse 1.2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ─── Persistent agent status bar (bottom-left) ─────────── */
+#agent-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #111827;
+  color: #d1d5db;
+  padding: 6px 16px;
+  font-size: 11px;
+  z-index: 100;
+  border-top-right-radius: 8px;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.15);
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.status-divider {
+  width: 1px;
+  height: 14px;
+  background: #374151;
+}
+
+/* Online/offline dot in status bar */
+#agent-online-status .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6b7280;
+  transition: background 0.3s;
+}
+#agent-online-status .status-dot.online {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  animation: glow-pulse 2s infinite;
+}
+#agent-online-status .status-dot.offline {
+  background: #ef4444;
+}
+#agent-online-status .status-dot.no-model {
+  background: #f59e0b;
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(34, 197, 94, 0.5); }
+  50%       { box-shadow: 0 0 12px rgba(34, 197, 94, 0.8); }
+}
+
+/* Knowledge status */
+#knowledge-status svg {
+  opacity: 0.6;
+}
+#knowledge-status.has-docs {
+  color: #93c5fd;
+}
+
+/* Agent cursor indicator */
+#agent-cursor-indicator {
+  color: #a78bfa;
+}
+#agent-cursor-indicator svg {
+  animation: cursor-blink 1s infinite;
+}
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ─── Agent error toast ─────────────────────────────────── */
+.agent-error {
+  position: fixed;
+  bottom: 40px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #7f1d1d;
+  color: #fecaca;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 101;
+  max-width: 420px;
+  transition: opacity 0.3s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.agent-error.hidden { opacity: 0; pointer-events: none; }
+.agent-error svg { flex-shrink: 0; color: #fca5a5; }
+
+/* ─── Scrollbar polish ────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 3px; }
+
+/* ─── Agent cursor inside editor ───────────────────────── */
+.agent-editor-cursor {
+  position: absolute;
+  width: 2px;
+  background-color: #7c3aed;
+  z-index: 5;
+  pointer-events: none;
+  animation: agent-cursor-blink 1s infinite;
+}
+.agent-editor-cursor::after {
+  content: "✦ Agent";
+  position: absolute;
+  bottom: 100%;
+  left: -4px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+@keyframes agent-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+

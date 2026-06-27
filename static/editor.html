@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doco — Editor</title>
+
+  <!-- Quill 2 via CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" />
+  <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+
+  <link rel="stylesheet" href="/static/editor.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     DOCUMENT LIST VIEW  (shown when no doc open)
+════════════════════════════════════════════ -->
+<div id="list-view">
+  <div class="list-header">
+    <a class="back-link" href="/">← Back to Doco</a>
+    <h1>Documents</h1>
+    <button id="new-doc-btn" class="btn-primary">+ New Document</button>
+  </div>
+  <div id="doc-list-container">
+    <p class="loading-msg">Loading documents…</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     EDITOR VIEW  (shown when a doc is open)
+════════════════════════════════════════════ -->
+<div id="editor-view" style="display:none;">
+
+  <!-- Top bar -->
+  <div id="editor-topbar">
+    <a href="/" class="topbar-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      Doco
+    </a>
+    <span style="color: #d1d5db; font-size: 13px;">/</span>
+    <button id="back-to-list-btn" class="topbar-btn">Documents</button>
+    <input id="doc-title-input" type="text" placeholder="Untitled Document" />
+    <span id="save-status" class="save-status">Saved</span>
+    <button id="export-docx-btn" class="btn-secondary">Export DOCX</button>
+  </div>
+
+  <!-- Quill toolbar -->
+  <div id="toolbar">
+    <span class="ql-formats">
+      <select class="ql-header">
+        <option value="1">Heading 1</option>
+        <option value="2">Heading 2</option>
+        <option value="3">Heading 3</option>
+        <option selected>Normal</option>
+      </select>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-bold"></button>
+      <button class="ql-italic"></button>
+      <button class="ql-underline"></button>
+      <button class="ql-strike"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-list" value="ordered"></button>
+      <button class="ql-list" value="bullet"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-blockquote"></button>
+      <button class="ql-code-block"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-clean"></button>
+    </span>
+  </div>
+
+  <!-- Main layout: editor + proposal panel side by side -->
+  <div id="editor-layout">
+
+    <!-- Editor -->
+    <div id="editor-wrapper">
+      <div id="quill-editor"></div>
+    </div>
+
+    <!-- Agent proposal panel (hidden until agent fires) -->
+    <div id="proposal-panel">
+      <div class="panel-header">
+        <span class="panel-icon">✦</span>
+        <span class="panel-title">Agent Suggestion</span>
+        <button id="dismiss-btn" class="dismiss-btn" title="Dismiss">✕</button>
+      </div>
+      <div id="agent-reason" class="panel-reason"></div>
+
+      <!-- For replace: show original text -->
+      <div id="original-block" style="display:none;">
+        <div class="diff-label">Original</div>
+        <div id="original-text" class="diff-original"></div>
+      </div>
+
+      <!-- Proposed content -->
+      <div class="diff-label" id="proposed-label">Proposed</div>
+      <div id="proposed-text" class="diff-proposed"></div>
+
+      <div class="panel-actions">
+        <button id="accept-btn" class="btn-accept">✓ Accept</button>
+        <button id="reject-btn" class="btn-reject">✗ Reject</button>
+      </div>
+      <div class="panel-hint">Tab to accept · Esc to reject</div>
+    </div>
+
+  </div>
+
+  <!-- Persistent agent status bar (bottom-left) -->
+  <div id="agent-status-bar">
+    <div id="agent-online-status" class="status-item">
+      <span class="status-dot" id="agent-dot"></span>
+      <span id="agent-status-text">Checking agent...</span>
+    </div>
+    <div class="status-divider"></div>
+    <div id="knowledge-status" class="status-item">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span id="knowledge-text">0 docs</span>
+    </div>
+    <div class="status-divider"></div>
+    <div id="agent-cursor-indicator" class="status-item" style="display:none;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+      <span>Agent active</span>
+    </div>
+  </div>
+
+  <!-- Agent thinking indicator (shows during active processing) -->
+  <div id="agent-status" class="agent-status hidden">
+    <span class="agent-dot"></span>
+    <span id="agent-status-text-temp">Agent thinking...</span>
+  </div>
+
+  <!-- Agent error toast -->
+  <div id="agent-error-toast" class="agent-error hidden">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    <span id="agent-error-text"></span>
+  </div>
+
+</div>
+
+<script src="/static/editor.js"></script>
+</body>
+</html>
