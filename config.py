@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Model Configurations
-    LLM_MODEL: str = "qwen2.5vl:7b"
+    LLM_MODEL: str = "qwen3.5:0.8b"
     EMBEDDING_MODEL: str = "qwen3-embedding:0.6b"
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 

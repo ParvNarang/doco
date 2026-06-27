@@ -6,17 +6,32 @@ import json
 import re
 import datetime
 import gc
+import logging
 import warnings
 import pypdfium2 as pdfium
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.responses import HTMLResponse, Response, JSONResponse, StreamingResponse
+from editor import router as editor_router, agent_router
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from PIL import Image, ImageEnhance
 from pydantic import BaseModel
 import rag
 import extraction
+
+# ─── Logging configuration ────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+# Quiet down noisy libraries
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+log = logging.getLogger("main")
 # surya imports
 # pyrefly: ignore [missing-import]
 from surya.inference import SuryaInferenceManager
@@ -49,24 +64,25 @@ def strip_html_tags(text):
 
 def load_surya_models():
     if "manager" not in models:
-        print("Loading Surya models...")
+        log.info("Loading Surya models...")
         models["manager"] = SuryaInferenceManager()
         models["layout_predictor"] = LayoutPredictor(models["manager"])
         models["recognition_predictor"] = RecognitionPredictor(models["manager"])
-        print("Models loaded successfully.")
+        log.info("Surya models loaded successfully.")
 
 def unload_surya_models():
     if "manager" in models:
-        print("Unloading Surya models to free memory for LLM...")
+        log.info("Unloading Surya models to free GPU memory...")
         models.clear()
         gc.collect()
         os.system("pkill -f llama-server")
-        print("Surya models unloaded.")
+        log.info("Surya models unloaded.")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Ensure data directory exists for both JSONs and Images
     os.makedirs("data", exist_ok=True)
+    os.makedirs("documents", exist_ok=True)
     
     yield
     # Clean up if needed
@@ -78,6 +94,8 @@ async def lifespan(app: FastAPI):
     os.system("pkill -f llama-server")
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(editor_router)
+app.include_router(agent_router)
 
 # Mount static files and data directory for serving images
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -86,6 +104,11 @@ app.mount("/data", StaticFiles(directory="data"), name="data")
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
     with open("static/index.html", "r") as f:
+        return f.read()
+
+@app.get("/editor", response_class=HTMLResponse)
+async def editor_page():
+    with open("static/editor.html", "r", encoding="utf-8") as f:
         return f.read()
 
 @app.post("/api/preview")
@@ -385,4 +408,4 @@ async def handle_extract(request: ExtractRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8010, reload=True)
